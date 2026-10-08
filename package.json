@@ -1,0 +1,935 @@
+{
+    "name": "devpilot-jira-bitbucket",
+    "displayName": "DevPilot for Jira & Bitbucket",
+    "description": "Checks that commit messages reference your Jira tasks, and notifies you about new comments on your Bitbucket pull requests so you can reply without leaving VS Code.",
+    "version": "0.5.7",
+    "publisher": "Sabricakmakci",
+    "author": "Sabri Çakmakçı",
+    "license": "MIT",
+    "icon": "media/icon.png",
+    "galleryBanner": {
+        "color": "#0B1220",
+        "theme": "dark"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/sabricakmakci/devpilot-jira-bitbucket.git"
+    },
+    "keywords": [
+        "jira",
+        "bitbucket",
+        "pull request",
+        "code review",
+        "commit message",
+        "git hook",
+        "atlassian"
+    ],
+    "categories": [
+        "SCM Providers",
+        "Other"
+    ],
+    "engines": {
+        "vscode": "^1.95.0"
+    },
+    "main": "./out/extension.js",
+    "l10n": "./l10n",
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "extensionDependencies": [
+        "vscode.git"
+    ],
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": false
+        },
+        "virtualWorkspaces": false
+    },
+    "contributes": {
+        "commands": [
+            {
+                "command": "jiraBitbucketFlow.jira.configure",
+                "title": "%command.configure%",
+                "category": "Jira"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.logout",
+                "title": "%command.logout%",
+                "category": "Jira",
+                "icon": "$(sign-out)"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.pickTask",
+                "title": "%command.pickTask%",
+                "category": "Jira",
+                "icon": "$(issues)"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.setActiveTask",
+                "title": "%command.setActiveTask%",
+                "category": "Jira"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.addToCommitMessage",
+                "title": "%command.addToCommitMessage%",
+                "category": "Jira",
+                "icon": "$(git-commit)"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.refreshTasks",
+                "title": "%command.refreshTasks%",
+                "category": "Jira",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.openTask",
+                "title": "%command.openTask%",
+                "category": "Jira",
+                "icon": "$(link-external)"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.createBranch",
+                "title": "%command.createBranch%",
+                "category": "Jira",
+                "icon": "$(git-branch)"
+            },
+            {
+                "command": "jiraBitbucketFlow.jira.transitionTask",
+                "title": "%command.transitionTask%",
+                "category": "Jira",
+                "icon": "$(arrow-swap)"
+            },
+            {
+                "command": "jiraBitbucketFlow.commitCheck.enable",
+                "title": "%command.enableCommitCheck%",
+                "category": "Jira",
+                "icon": "$(debug-start)"
+            },
+            {
+                "command": "jiraBitbucketFlow.commitCheck.disable",
+                "title": "%command.disableCommitCheck%",
+                "category": "Jira",
+                "icon": "$(debug-stop)"
+            },
+            {
+                "command": "jiraBitbucketFlow.settings.edit",
+                "title": "%command.editSetting%",
+                "category": "Jira & Bitbucket"
+            },
+            {
+                "command": "jiraBitbucketFlow.settings.refresh",
+                "title": "%command.refreshSettings%",
+                "category": "Jira & Bitbucket",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "jiraBitbucketFlow.settings.openAll",
+                "title": "%command.openAllSettings%",
+                "category": "Jira & Bitbucket",
+                "icon": "$(settings-gear)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.logout",
+                "title": "%command.logout%",
+                "category": "Bitbucket",
+                "icon": "$(sign-out)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.configure",
+                "title": "%command.configure%",
+                "category": "Bitbucket",
+                "icon": "$(gear)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.refresh",
+                "title": "%command.refresh%",
+                "category": "Bitbucket",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.markAllRead",
+                "title": "%command.markAllRead%",
+                "category": "Bitbucket",
+                "icon": "$(check-all)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.openPullRequest",
+                "title": "%command.openPullRequest%",
+                "category": "Bitbucket",
+                "icon": "$(link-external)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.openComment",
+                "title": "%command.openComment%",
+                "category": "Bitbucket"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.openCommentInBrowser",
+                "title": "%command.openCommentInBrowser%",
+                "category": "Bitbucket",
+                "icon": "$(link-external)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.reply",
+                "title": "%command.reply%",
+                "category": "Bitbucket",
+                "icon": "$(reply)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.replyInEditor",
+                "title": "%command.reply%",
+                "category": "Bitbucket"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.start",
+                "title": "%command.review.start%",
+                "category": "Bitbucket",
+                "icon": "$(sparkle)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.startWithInstructions",
+                "title": "%command.review.startWithInstructions%",
+                "category": "Bitbucket",
+                "icon": "$(sparkle)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.selectModel",
+                "title": "%command.review.selectModel%",
+                "category": "Bitbucket"
+            },
+            {
+                "command": "jiraBitbucketFlow.readiness.generate",
+                "title": "%command.readiness.generate%",
+                "category": "Jira",
+                "icon": "$(sparkle)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.sendAll",
+                "title": "%command.review.sendAll%",
+                "category": "Bitbucket",
+                "icon": "$(send)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.discardAll",
+                "title": "%command.review.discardAll%",
+                "category": "Bitbucket",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.sendDraft",
+                "title": "%command.review.sendDraft%",
+                "category": "Bitbucket",
+                "icon": "$(send)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.discardDraft",
+                "title": "%command.review.discardDraft%",
+                "category": "Bitbucket",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.editDraft",
+                "title": "%command.review.editDraft%",
+                "category": "Bitbucket",
+                "icon": "$(edit)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.saveDraft",
+                "title": "%command.review.saveDraft%",
+                "category": "Bitbucket"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.cancelEdit",
+                "title": "%command.review.cancelEdit%",
+                "category": "Bitbucket"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.approve",
+                "title": "%command.review.approve%",
+                "category": "Bitbucket",
+                "icon": "$(check)"
+            },
+            {
+                "command": "jiraBitbucketFlow.review.needsWork",
+                "title": "%command.review.needsWork%",
+                "category": "Bitbucket",
+                "icon": "$(request-changes)"
+            },
+            {
+                "command": "jiraBitbucketFlow.commentFix.fixComment",
+                "title": "%command.commentFix.fixComment%",
+                "category": "Bitbucket",
+                "icon": "$(sparkle)"
+            },
+            {
+                "command": "jiraBitbucketFlow.commentFix.fixAll",
+                "title": "%command.commentFix.fixAll%",
+                "category": "Bitbucket",
+                "icon": "$(sparkle)"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "jiraBitbucketFlow",
+                    "title": "DevPilot",
+                    "icon": "media/activity-bar.svg"
+                }
+            ]
+        },
+        "views": {
+            "jiraBitbucketFlow": [
+                {
+                    "id": "jiraBitbucketFlow.tasks",
+                    "name": "%view.tasks%",
+                    "icon": "$(issues)"
+                },
+                {
+                    "id": "jiraBitbucketFlow.pullRequestsPanel",
+                    "name": "%view.pullRequests%",
+                    "icon": "$(git-pull-request)"
+                },
+                {
+                    "id": "jiraBitbucketFlow.settings",
+                    "name": "%view.settings%",
+                    "icon": "$(settings-gear)"
+                }
+            ]
+        },
+        "viewsWelcome": [
+            {
+                "view": "jiraBitbucketFlow.tasks",
+                "contents": "%welcome.jiraNotConfigured%",
+                "when": "!jiraBitbucketFlow.jiraConfigured"
+            },
+            {
+                "view": "jiraBitbucketFlow.tasks",
+                "contents": "%welcome.noTasks%",
+                "when": "jiraBitbucketFlow.jiraConfigured"
+            },
+            {
+                "view": "jiraBitbucketFlow.pullRequestsPanel",
+                "contents": "%welcome.notConfigured%",
+                "when": "!jiraBitbucketFlow.bitbucketConfigured"
+            },
+            {
+                "view": "jiraBitbucketFlow.pullRequestsPanel",
+                "contents": "%welcome.noPullRequests%",
+                "when": "jiraBitbucketFlow.bitbucketConfigured"
+            }
+        ],
+        "menus": {
+            "scm/title": [
+                {
+                    "command": "jiraBitbucketFlow.jira.pickTask",
+                    "when": "scmProvider == git",
+                    "group": "navigation"
+                }
+            ],
+            "view/title": [
+                {
+                    "command": "jiraBitbucketFlow.jira.refreshTasks",
+                    "when": "view == jiraBitbucketFlow.tasks && jiraBitbucketFlow.jiraConfigured",
+                    "group": "navigation"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.markAllRead",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && jiraBitbucketFlow.bitbucketConfigured",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.refresh",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && jiraBitbucketFlow.bitbucketConfigured",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.configure",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/",
+                    "group": "settings"
+                },
+                {
+                    "command": "jiraBitbucketFlow.settings.refresh",
+                    "when": "view == jiraBitbucketFlow.settings",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.settings.openAll",
+                    "when": "view == jiraBitbucketFlow.settings",
+                    "group": "navigation@2"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "jiraBitbucketFlow.readiness.generate",
+                    "when": "view == jiraBitbucketFlow.settings && viewItem == readinessRules",
+                    "group": "inline"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.addToCommitMessage",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.createBranch",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.transitionTask",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.openTask",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "inline@4"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.addToCommitMessage",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "1_task@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.createBranch",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "1_task@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.transitionTask",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "1_task@3"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.openTask",
+                    "when": "view == jiraBitbucketFlow.tasks && viewItem == task",
+                    "group": "1_task@4"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.logout",
+                    "when": "view == jiraBitbucketFlow.settings && viewItem == jiraAccount.connected",
+                    "group": "inline"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.logout",
+                    "when": "view == jiraBitbucketFlow.settings && viewItem == bitbucketAccount.connected",
+                    "group": "inline"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commitCheck.enable",
+                    "when": "view == jiraBitbucketFlow.settings && viewItem =~ /^repoCheck\\.(missing|foreign)$/",
+                    "group": "inline"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commitCheck.disable",
+                    "when": "view == jiraBitbucketFlow.settings && viewItem == repoCheck.managed",
+                    "group": "inline"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.openPullRequest",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^(review)?[pP]ullRequest/",
+                    "group": "inline@9"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.sendAll",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /\\+drafts$/",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.start",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^reviewPullRequest/",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commentFix.fixAll",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^pullRequest/",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commentFix.fixAll",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^pullRequest/",
+                    "group": "0_fix@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.start",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^(review)?[pP]ullRequest/",
+                    "group": "1_review@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.startWithInstructions",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^(review)?[pP]ullRequest/",
+                    "group": "1_review@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.sendAll",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /\\+drafts$/",
+                    "group": "1_review@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.discardAll",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /\\+drafts$/",
+                    "group": "1_review@3"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.approve",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^reviewPullRequest/",
+                    "group": "2_status@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.needsWork",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^reviewPullRequest/",
+                    "group": "2_status@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.openPullRequest",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem =~ /^(review)?[pP]ullRequest/",
+                    "group": "3_open@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commentFix.fixComment",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem == comment",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.reply",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem == comment",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commentFix.fixComment",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem == comment",
+                    "group": "1_comment@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.reply",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem == comment",
+                    "group": "1_comment@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.openCommentInBrowser",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && viewItem == comment",
+                    "group": "1_comment@3"
+                }
+            ],
+            "comments/commentThread/context": [
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.replyInEditor",
+                    "when": "commentController == jiraBitbucketFlow.prComments",
+                    "group": "inline"
+                }
+            ],
+            "comments/commentThread/title": [
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.openCommentInBrowser",
+                    "when": "commentController == jiraBitbucketFlow.prComments",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.sendDraft",
+                    "when": "commentController == jiraBitbucketFlow.aiReview && commentThread == draft",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.discardDraft",
+                    "when": "commentController == jiraBitbucketFlow.aiReview && commentThread == draft",
+                    "group": "inline@2"
+                }
+            ],
+            "comments/comment/title": [
+                {
+                    "command": "jiraBitbucketFlow.review.editDraft",
+                    "when": "commentController == jiraBitbucketFlow.aiReview && comment == draft",
+                    "group": "inline"
+                }
+            ],
+            "comments/comment/context": [
+                {
+                    "command": "jiraBitbucketFlow.review.cancelEdit",
+                    "when": "commentController == jiraBitbucketFlow.aiReview && comment == draft",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.saveDraft",
+                    "when": "commentController == jiraBitbucketFlow.aiReview && comment == draft",
+                    "group": "inline@2"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "jiraBitbucketFlow.jira.setActiveTask",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.jira.addToCommitMessage",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.settings.edit",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.openPullRequest",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.openComment",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.openCommentInBrowser",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.reply",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.replyInEditor",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.sendDraft",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.discardDraft",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.editDraft",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.saveDraft",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.cancelEdit",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.approve",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.review.needsWork",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commentFix.fixComment",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.commentFix.fixAll",
+                    "when": "jiraBitbucketFlow.bitbucketConfigured"
+                }
+            ]
+        },
+        "languageModelTools": [
+            {
+                "name": "jiraBitbucketFlow_getPullRequestComments",
+                "toolReferenceName": "bitbucketComments",
+                "displayName": "%tool.getComments.displayName%",
+                "userDescription": "%tool.getComments.userDescription%",
+                "modelDescription": "Gets the review comment threads of one of the user's open Bitbucket pull requests, with the file path and line each comment refers to and all replies. Without commentId it returns only the threads that still need an answer: resolved threads, threads started by the user, threads the user answered last and threads by skipped authors such as bots are left out. With commentId it returns the thread that contains that comment. Without pullRequestId it uses the user's pull request of the checked out branch.",
+                "canBeReferencedInPrompt": true,
+                "icon": "$(comment-discussion)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "pullRequestId": {
+                            "type": "number",
+                            "description": "Pull request number, e.g. 399."
+                        },
+                        "repository": {
+                            "type": "string",
+                            "description": "Repository of the pull request as PROJECT/slug or slug. Needed when several open pull requests have the same number."
+                        },
+                        "commentId": {
+                            "type": "number",
+                            "description": "Only return the thread that contains this comment."
+                        },
+                        "includeSkippedAuthors": {
+                            "type": "boolean",
+                            "description": "Also return threads by skipped authors such as bots. Only set it when the user asks for it."
+                        }
+                    }
+                }
+            },
+            {
+                "name": "jiraBitbucketFlow_replyToPullRequestComment",
+                "toolReferenceName": "bitbucketReply",
+                "displayName": "%tool.reply.displayName%",
+                "userDescription": "%tool.reply.userDescription%",
+                "modelDescription": "Posts a reply under the user's name to a review comment on one of the user's open Bitbucket pull requests. Only use it for reply text the user has approved; the user is asked to confirm before it is posted. It does not resolve the comment.",
+                "canBeReferencedInPrompt": true,
+                "icon": "$(reply)",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "pullRequestId": {
+                            "type": "number",
+                            "description": "Pull request number, e.g. 399."
+                        },
+                        "repository": {
+                            "type": "string",
+                            "description": "Repository of the pull request as PROJECT/slug or slug."
+                        },
+                        "commentId": {
+                            "type": "number",
+                            "description": "Id of the comment to reply to, normally the first comment of the thread."
+                        },
+                        "text": {
+                            "type": "string",
+                            "description": "Reply text in Markdown."
+                        }
+                    },
+                    "required": [
+                        "pullRequestId",
+                        "commentId",
+                        "text"
+                    ]
+                }
+            }
+        ],
+        "configuration": {
+            "title": "DevPilot for Jira & Bitbucket",
+            "properties": {
+                "jiraBitbucketFlow.jira.baseUrl": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "%config.jira.baseUrl%"
+                },
+                "jiraBitbucketFlow.jira.email": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "%config.jira.email%"
+                },
+                "jiraBitbucketFlow.commitCheck.allowedIssueTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "Development Task"
+                    ],
+                    "markdownDescription": "%config.allowedIssueTypes%"
+                },
+                "jiraBitbucketFlow.commitCheck.onViolation": {
+                    "type": "string",
+                    "enum": [
+                        "warn",
+                        "block"
+                    ],
+                    "enumDescriptions": [
+                        "%config.onViolation.warn%",
+                        "%config.onViolation.block%"
+                    ],
+                    "default": "warn",
+                    "markdownDescription": "%config.onViolation%"
+                },
+                "jiraBitbucketFlow.branchPrefixes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "feature",
+                        "bugfix",
+                        "hotfix"
+                    ],
+                    "markdownDescription": "%config.branchPrefixes%"
+                },
+                "jiraBitbucketFlow.bitbucket.baseUrl": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "%config.bitbucket.baseUrl%"
+                },
+                "jiraBitbucketFlow.bitbucket.email": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "%config.bitbucket.email%"
+                },
+                "jiraBitbucketFlow.bitbucket.pollInterval": {
+                    "type": "number",
+                    "default": 30,
+                    "minimum": 15,
+                    "markdownDescription": "%config.bitbucket.pollInterval%"
+                },
+                "jiraBitbucketFlow.review.model": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "%config.review.model%"
+                },
+                "jiraBitbucketFlow.review.language": {
+                    "type": "string",
+                    "default": "auto",
+                    "enum": [
+                        "auto",
+                        "en",
+                        "tr",
+                        "de",
+                        "fr",
+                        "es",
+                        "it",
+                        "nl",
+                        "pt",
+                        "ru",
+                        "ar",
+                        "ja",
+                        "ko",
+                        "zh-CN"
+                    ],
+                    "enumItemLabels": [
+                        "%config.review.language.auto%",
+                        "English",
+                        "Türkçe",
+                        "Deutsch",
+                        "Français",
+                        "Español",
+                        "Italiano",
+                        "Nederlands",
+                        "Português",
+                        "Русский",
+                        "العربية",
+                        "日本語",
+                        "한국어",
+                        "简体中文"
+                    ],
+                    "markdownDescription": "%config.review.language%"
+                },
+                "jiraBitbucketFlow.review.instructionFiles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        ".github/copilot-instructions.md",
+                        ".github/instructions/**/*.md",
+                        "AGENTS.md",
+                        "docs/architecture/**/*.md"
+                    ],
+                    "markdownDescription": "%config.review.instructionFiles%"
+                },
+                "jiraBitbucketFlow.review.excludeFiles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [
+                        "**/*.g.dart",
+                        "**/*.freezed.dart",
+                        "**/*.lock",
+                        "**/package-lock.json",
+                        "**/*.min.js",
+                        "**/*.svg"
+                    ],
+                    "markdownDescription": "%config.review.excludeFiles%"
+                },
+                "jiraBitbucketFlow.commentFix.excludeAuthors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "markdownDescription": "%config.commentFix.excludeAuthors%"
+                },
+                "jiraBitbucketFlow.readiness.rules": {
+                    "type": "array",
+                    "default": [],
+                    "markdownDescription": "%config.readiness.rules%",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "%config.readiness.rule.name%"
+                            },
+                            "issue": {
+                                "type": "string",
+                                "enum": [
+                                    "parent",
+                                    "task"
+                                ],
+                                "default": "parent",
+                                "description": "%config.readiness.rule.issue%"
+                            },
+                            "field": {
+                                "type": "string",
+                                "description": "%config.readiness.rule.field%"
+                            },
+                            "matches": {
+                                "type": "string",
+                                "description": "%config.readiness.rule.matches%"
+                            },
+                            "subtask": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "description": "%config.readiness.rule.subtask%",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "description": "%config.readiness.rule.subtask.type%"
+                                    },
+                                    "done": {
+                                        "type": "boolean",
+                                        "description": "%config.readiness.rule.subtask.done%"
+                                    },
+                                    "assigned": {
+                                        "type": "boolean",
+                                        "description": "%config.readiness.rule.subtask.assigned%"
+                                    }
+                                }
+                            },
+                            "when": {
+                                "type": "object",
+                                "required": [
+                                    "field"
+                                ],
+                                "additionalProperties": false,
+                                "description": "%config.readiness.rule.when%",
+                                "properties": {
+                                    "field": {
+                                        "type": "string"
+                                    },
+                                    "matches": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "lowestUnreleased": {
+                                "type": "boolean",
+                                "description": "%config.readiness.rule.lowestUnreleased%"
+                            },
+                            "severity": {
+                                "type": "string",
+                                "enum": [
+                                    "error",
+                                    "warning"
+                                ],
+                                "default": "error",
+                                "description": "%config.readiness.rule.severity%"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "package": "vsce package",
+        "publish": "vsce publish"
+    },
+    "devDependencies": {
+        "@types/node": "^18.19.130",
+        "@types/vscode": "^1.95.0",
+        "@vscode/vsce": "^3.2.0",
+        "typescript": "^5.6.0"
+    }
+}
