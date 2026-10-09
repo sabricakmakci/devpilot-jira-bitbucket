@@ -2,7 +2,7 @@
     "name": "devpilot-jira-bitbucket",
     "displayName": "DevPilot for Jira & Bitbucket",
     "description": "Checks that commit messages reference your Jira tasks, and notifies you about new comments on your Bitbucket pull requests so you can reply without leaving VS Code.",
-    "version": "0.5.7",
+    "version": "0.5.8",
     "publisher": "Sabricakmakci",
     "author": "Sabri Çakmakçı",
     "license": "MIT",

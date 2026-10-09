@@ -77,7 +77,22 @@ export function errorMessage(error: unknown): string {
         if (error.name === 'TimeoutError') {
             return l10n.t('The request timed out.');
         }
-        return error.cause instanceof Error ? error.cause.message : error.message;
+        return describeCauses(error);
     }
     return String(error);
+}
+
+/** fetch wraps the real failure (TLS, proxy, reset) several levels deep, so list the whole chain. */
+function describeCauses(error: Error): string {
+    const parts: string[] = [];
+    let current: unknown = error.cause ?? error;
+    for (let depth = 0; current instanceof Error && depth < 5; depth++) {
+        const code = (current as { code?: unknown }).code;
+        const part = typeof code === 'string' && !current.message.includes(code) ? `${current.message} [${code}]` : current.message;
+        if (!parts.includes(part)) {
+            parts.push(part);
+        }
+        current = current.cause;
+    }
+    return parts.join(' <- ');
 }

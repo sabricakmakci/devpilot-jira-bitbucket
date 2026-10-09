@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.8
+
+- Connection errors now show the full underlying cause (TLS, proxy, connection reset) instead of only "Request was cancelled".
+
 ## 0.5.7
 
 First release on the Visual Studio Marketplace.
