@@ -5,7 +5,7 @@ import { errorMessage } from '../http';
 import { BITBUCKET_TOKEN_SECRET, BitbucketConnection } from './client';
 import { CommentFixer } from './commentFix';
 import { PullRequestComments } from './comments';
-import { PrComment, PullRequest, RepoRef } from './model';
+import { BbUser, PrComment, PullRequest, RepoRef, flattenComments } from './model';
 import { DraftComment, PullRequestReviewer } from './review';
 import { PullRequestNode, PullRequestTreeProvider } from './tree';
 import { PullRequestUpdate, PullRequestWatcher } from './watcher';
@@ -16,6 +16,11 @@ const MAX_SEPARATE_NOTIFICATIONS = 3;
 function snippet(text: string, max = 100): string {
     const line = text.replace(/\s+/g, ' ').trim();
     return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
+/** True when the user wrote something in the thread, so it is a conversation of theirs. */
+function involvesMe(thread: PrComment, me: BbUser | undefined): boolean {
+    return me !== undefined && flattenComments([thread]).some(comment => comment.author.id === me.id);
 }
 
 export function registerPullRequests(
@@ -37,13 +42,28 @@ export function registerPullRequests(
     const reviewer = new PullRequestReviewer(connection, git, log);
     const tree = new PullRequestTreeProvider(watcher, pr => reviewer.draftCount(pr));
     const views = VIEW_IDS.map(id => vscode.window.createTreeView(id, { treeDataProvider: tree, showCollapseAll: true }));
-    const editorComments = new PullRequestComments(git, connection);
+    const editorComments = new PullRequestComments(git, connection, context.globalState, (pr, commentId) => watcher.isUnread(pr, commentId));
     const fixer = new CommentFixer(connection, watcher, git);
 
     const allThreads = () => [
         ...watcher.snapshots,
         ...watcher.reviewRequests.map(pr => ({ pr, threads: watcher.reviewThreads.get(pr.key) ?? [] })),
     ];
+
+    /** Comments shown in the Comments panel: everything on the user's own pull requests, and
+     *  elsewhere only the threads they take part in, unless the setting asks for all of them. */
+    const panelThreads = () => {
+        if (vscode.workspace.getConfiguration('jiraBitbucketFlow.bitbucket').get<string>('panelComments', 'involved') === 'all') {
+            return allThreads();
+        }
+        return [
+            ...watcher.snapshots,
+            ...watcher.reviewRequests.map(pr => ({
+                pr,
+                threads: (watcher.reviewThreads.get(pr.key) ?? []).filter(thread => involvesMe(thread, watcher.me)),
+            })),
+        ];
+    };
 
     const updateView = () => {
         const { state } = watcher;
@@ -54,7 +74,7 @@ export function registerPullRequests(
             view.badge = unread > 0 ? { value: unread, tooltip: l10n.t('{0} unread comments', unread) } : undefined;
         }
         tree.refresh();
-        editorComments.update(allThreads());
+        editorComments.update(panelThreads());
     };
 
     const suggestedUrl = () => {
@@ -123,14 +143,39 @@ export function registerPullRequests(
         if (!result) {
             return;
         }
+        // Answers the model did not deliver in the expected form are reported instead of being
+        // passed off as a clean review, because a second run then often does find something.
+        const problems = [
+            result.failedParts > 0
+                ? l10n.t('The answer for {0} of {1} parts could not be read.', result.failedParts, result.parts)
+                : undefined,
+            result.dropped > 0
+                ? l10n.t('{0} findings were left out because they did not point at a changed line.', result.dropped)
+                : undefined,
+        ].filter(Boolean).join(' ');
+
         if (result.drafts === 0) {
-            await offerReviewStatus(pr, l10n.t('The AI review found no problems in #{0}.', pr.id));
+            if (!problems) {
+                await offerReviewStatus(pr, l10n.t('The AI review found no problems in #{0}.', pr.id));
+                return;
+            }
+            const again = l10n.t('Review Again');
+            const choice = await vscode.window.showWarningMessage(
+                `${l10n.t('The AI review of #{0} did not finish properly, so it may have missed something.', pr.id)} ${problems} ${l10n.t('See the DevPilot output for details.')}`,
+                again,
+            );
+            if (choice === again) {
+                await startReview(pr, extra);
+            }
             return;
         }
         const sendAll = l10n.t('Send All');
         const showAll = l10n.t('Show All');
         const choice = await vscode.window.showInformationMessage(
-            l10n.t('The AI review left {0} draft comments in {1} files of #{2}. Edit or discard them, then send the ones you agree with.', result.drafts, result.files, pr.id),
+            [
+                l10n.t('The AI review left {0} draft comments in {1} files of #{2}. Edit or discard them, then send the ones you agree with.', result.drafts, result.files, pr.id),
+                problems,
+            ].filter(Boolean).join(' '),
             showAll,
             sendAll,
         );
@@ -166,6 +211,21 @@ export function registerPullRequests(
         );
         vscode.window.setStatusBarMessage(l10n.t('Reply sent.'), 4000);
         await watcher.poll(true);
+    };
+
+    /** Takes comments out of the Comments panel; they come back when someone writes in the thread. */
+    const hideComments = async (thread: vscode.CommentThread, wholePullRequest: boolean) => {
+        const hidden = await editorComments.hide(thread, wholePullRequest);
+        if (!hidden) {
+            return;
+        }
+        await watcher.markRead(hidden.pr, hidden.commentIds);
+        vscode.window.setStatusBarMessage(
+            wholePullRequest
+                ? l10n.t('{0} comment threads of #{1} hidden.', hidden.threads, hidden.pr.id)
+                : l10n.t('Comment hidden. It comes back when someone writes in the thread.'),
+            5000,
+        );
     };
 
     const replyTo = async (pr: PullRequest, comment: PrComment) => {
@@ -293,6 +353,17 @@ export function registerPullRequests(
                 await replyTo(node.pr, node.comment);
             }
         }),
+        register('jiraBitbucketFlow.bitbucket.hideComment', (thread: vscode.CommentThread) => hideComments(thread, false)),
+        register('jiraBitbucketFlow.bitbucket.hidePullRequestComments', (thread: vscode.CommentThread) => hideComments(thread, true)),
+        register('jiraBitbucketFlow.bitbucket.showHiddenComments', async () => {
+            const count = editorComments.hiddenCount();
+            if (count === 0) {
+                vscode.window.showInformationMessage(l10n.t('No comments are hidden.'));
+                return;
+            }
+            await editorComments.unhideAll();
+            vscode.window.setStatusBarMessage(l10n.t('{0} hidden comment threads are shown again.', count), 4000);
+        }),
         register('jiraBitbucketFlow.bitbucket.replyInEditor', async (reply: vscode.CommentReply) => {
             const entry = editorComments.find(reply.thread);
             const text = reply.text.trim();
@@ -380,6 +451,8 @@ export function registerPullRequests(
         vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration('jiraBitbucketFlow.bitbucket.baseUrl') || event.affectsConfiguration('jiraBitbucketFlow.bitbucket.email')) {
                 resetConnection();
+            } else if (event.affectsConfiguration('jiraBitbucketFlow.bitbucket.panelComments')) {
+                editorComments.update(panelThreads());
             }
         }),
         context.secrets.onDidChange(event => {
@@ -389,7 +462,7 @@ export function registerPullRequests(
         }),
     );
     if (git) {
-        context.subscriptions.push(git.onDidOpenRepository(() => editorComments.update(allThreads())));
+        context.subscriptions.push(git.onDidOpenRepository(() => editorComments.update(panelThreads())));
     }
 
     updateView();

@@ -8,12 +8,25 @@ import { PrComment, PullRequest, flattenComments, repoPaths } from './model';
 import { PullRequestSnapshot } from './watcher';
 
 const SCHEME = 'jbf-pr';
+const HIDDEN_KEY = 'jiraBitbucketFlow.hiddenCommentThreads';
 
 interface ThreadEntry {
     thread: vscode.CommentThread;
     signature: string;
     pr: PullRequest;
     rootId: number;
+}
+
+/** Hidden threads, keyed by `${pr.key}:${rootId}` and holding the newest comment id at the time they were hidden. */
+type HiddenThreads = Record<string, number>;
+
+function threadKey(pr: PullRequest, rootId: number): string {
+    return `${pr.key}:${rootId}`;
+}
+
+/** A hidden thread comes back when someone adds a comment to it. */
+function newestCommentId(root: PrComment): number {
+    return Math.max(...flattenComments([root]).map(comment => comment.id));
 }
 
 export interface CommentLocation {
@@ -59,10 +72,14 @@ export class PullRequestComments implements vscode.Disposable, vscode.TextDocume
     private readonly registration = vscode.workspace.registerTextDocumentContentProvider(SCHEME, this);
     private readonly threads = new Map<string, ThreadEntry>();
     private readonly pullRequests = new Map<string, PullRequest>();
+    private lastSnapshots: PullRequestSnapshot[] = [];
 
     constructor(
         private readonly git: API | undefined,
         private readonly connection: BitbucketConnection,
+        private readonly storage: vscode.Memento,
+        /** Unread threads open expanded, the rest stay collapsed. */
+        private readonly isUnread: (pr: PullRequest, commentId: number) => boolean,
     ) { }
 
     /** Where a comment (or the thread of a reply) is shown. */
@@ -103,13 +120,18 @@ export class PullRequestComments implements vscode.Disposable, vscode.TextDocume
     }
 
     update(snapshots: PullRequestSnapshot[]): void {
+        this.lastSnapshots = snapshots;
         const wanted = new Set<string>();
+        const hidden = this.hidden();
         this.pullRequests.clear();
         for (const { pr, threads } of snapshots) {
             this.pullRequests.set(pr.key, pr);
             for (const root of threads) {
+                const key = threadKey(pr, root.id);
+                if (hidden[key] !== undefined && newestCommentId(root) <= hidden[key]) {
+                    continue;
+                }
                 const { uri, line } = this.location(pr, root);
-                const key = `${pr.key}:${root.id}`;
                 const comments = flattenComments([root]);
                 const signature = JSON.stringify([uri.toString(), line, comments.map(comment => [comment.id, comment.text])]);
                 wanted.add(key);
@@ -132,7 +154,9 @@ export class PullRequestComments implements vscode.Disposable, vscode.TextDocume
                     ? `${root.path}${root.line ? `:${root.line}` : ''}`
                     : `#${pr.id} ${pr.title}`;
                 thread.canReply = true;
-                thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+                thread.collapsibleState = comments.some(comment => this.isUnread(pr, comment.id))
+                    ? vscode.CommentThreadCollapsibleState.Expanded
+                    : vscode.CommentThreadCollapsibleState.Collapsed;
                 this.threads.set(key, { thread, signature, pr, rootId: root.id });
             }
         }
@@ -142,10 +166,55 @@ export class PullRequestComments implements vscode.Disposable, vscode.TextDocume
                 this.threads.delete(key);
             }
         }
+        this.forgetClosed(hidden);
+    }
+
+    /** Drops hidden threads of pull requests that are no longer listed, e.g. merged ones. */
+    private forgetClosed(hidden: HiddenThreads): void {
+        if (this.pullRequests.size === 0) {
+            return;
+        }
+        const keys = Object.keys(hidden).filter(key => !this.pullRequests.has(key.slice(0, key.lastIndexOf(':'))));
+        if (keys.length > 0) {
+            keys.forEach(key => delete hidden[key]);
+            void this.storage.update(HIDDEN_KEY, hidden);
+        }
     }
 
     find(thread: vscode.CommentThread): ThreadEntry | undefined {
         return [...this.threads.values()].find(entry => entry.thread === thread);
+    }
+
+    /** Hides one thread, or every thread of its pull request, until it gets a new comment. */
+    async hide(thread: vscode.CommentThread, wholePullRequest = false): Promise<{ pr: PullRequest; threads: number; commentIds: number[] } | undefined> {
+        const entry = this.find(thread);
+        if (!entry) {
+            return undefined;
+        }
+        const hidden = this.hidden();
+        const roots = this.lastSnapshots
+            .filter(snapshot => snapshot.pr.key === entry.pr.key)
+            .flatMap(snapshot => snapshot.threads)
+            .filter(root => wholePullRequest || root.id === entry.rootId);
+        for (const root of roots) {
+            hidden[threadKey(entry.pr, root.id)] = newestCommentId(root);
+        }
+        await this.storage.update(HIDDEN_KEY, hidden);
+        this.update(this.lastSnapshots);
+        return { pr: entry.pr, threads: roots.length, commentIds: flattenComments(roots).map(comment => comment.id) };
+    }
+
+    hiddenCount(): number {
+        return Object.keys(this.hidden()).length;
+    }
+
+    async unhideAll(): Promise<void> {
+        await this.storage.update(HIDDEN_KEY, undefined);
+        this.update(this.lastSnapshots);
+    }
+
+    private hidden(): HiddenThreads {
+        return { ...this.storage.get<HiddenThreads>(HIDDEN_KEY, {}) };
     }
 
     dispose(): void {

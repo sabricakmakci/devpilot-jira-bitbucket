@@ -88,7 +88,9 @@ On your own pull requests, click the sparkle button on a comment (**Fix with AI*
 | `jiraBitbucketFlow.bitbucket.baseUrl` | | Bitbucket URL |
 | `jiraBitbucketFlow.bitbucket.email` | | Account email, only for Bitbucket Cloud |
 | `jiraBitbucketFlow.bitbucket.pollInterval` | `30` | Seconds between checks (minimum 15) |
-| `jiraBitbucketFlow.review.model` | | Language model used for AI review. Empty: ask on first use |
+| `jiraBitbucketFlow.bitbucket.panelComments` | `involved` | Which comments the Comments panel shows: `involved` (your pull requests plus threads you took part in) or `all` |
+| `jiraBitbucketFlow.review.model` | | Language model used for AI review. Empty: ask on first use. Pick it from **AI model** in Settings |
+| `jiraBitbucketFlow.review.language` | `auto` | Language the AI writes in, for reviews and for **Fix with AI**. `auto` follows the VS Code display language |
 | `jiraBitbucketFlow.review.instructionFiles` | `.github/copilot-instructions.md`, `AGENTS.md`, ... | Project rule files added to the review prompt |
 | `jiraBitbucketFlow.review.excludeFiles` | `**/*.g.dart`, `**/*.lock`, ... | Files skipped by AI review |
 | `jiraBitbucketFlow.commentFix.excludeAuthors` | `[]` | Comment authors skipped by **Fix All Comments with AI** |

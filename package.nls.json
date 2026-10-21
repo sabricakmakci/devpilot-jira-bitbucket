@@ -72,5 +72,13 @@
     "config.readiness.rule.subtask.assigned": "The sub-task must be assigned to someone.",
     "config.readiness.rule.when": "Apply the rule only when this field is set (or matches `matches`), e.g. only for bugs.",
     "config.readiness.rule.lowestUnreleased": "Each version in `field` (e.g. `Fix Version/s`) must be the lowest version of the project that is not released or archived. Versions with a different format (e.g. `2.2.0` and `1.2.0-beta`) are compared separately.",
-    "config.readiness.rule.severity": "`error` (default) turns the task red, `warning` turns it yellow."
+    "config.readiness.rule.severity": "`error` (default) turns the task red, `warning` turns it yellow.",
+    "command.hideComment": "Hide This Comment",
+    "command.hidePullRequestComments": "Hide All Comments of This Pull Request",
+    "command.showHiddenComments": "Show Hidden Comments Again",
+    "config.bitbucket.panelComments": "Which pull request comments appear in the **Comments** panel. Hidden comments (**Hide This Comment**) come back when someone writes in the thread.",
+    "config.bitbucket.panelComments.involved": "Only the ones that concern me",
+    "config.bitbucket.panelComments.all": "All comments",
+    "config.bitbucket.panelComments.involved.detail": "Comments on your own pull requests, and threads you took part in on the pull requests you review.",
+    "config.bitbucket.panelComments.all.detail": "Every comment of every listed pull request."
 }

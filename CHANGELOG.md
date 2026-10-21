@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0
+
+### Comments panel
+
+- The panel now shows only the comments that concern you: everything on your own pull requests, and on the pull requests you review only the threads you took part in. The new `jiraBitbucketFlow.bitbucket.panelComments` setting switches back to all comments.
+- Comment threads start collapsed; only threads with unread comments open by themselves.
+- **Hide This Comment** and **Hide All Comments of This Pull Request** take threads out of the panel. A hidden thread comes back when someone writes in it, and **Show Hidden Comments Again** in the Pull Requests view restores all of them.
+
+### AI
+
+- The model for AI review is now picked from a list of the available models (**AI model** in Accounts & Settings), instead of typing its id by hand.
+- **Fix with AI** follows the `jiraBitbucketFlow.review.language` setting: the agent writes to you in that language, and drafts the reply to the reviewer in it as well. On `auto` the reply still follows the language of the reviewer's comment.
+- When the model answers in an unexpected form, the review asks it once more instead of silently reporting that it found nothing. If a part still cannot be read, or findings were left out because they did not point at a changed line, the result says so and offers **Review Again**.
+
 ## 0.5.8
 
 - Connection errors now show the full underlying cause (TLS, proxy, connection reset) instead of only "Request was cancelled".

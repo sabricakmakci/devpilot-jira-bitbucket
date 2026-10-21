@@ -2,7 +2,7 @@
     "name": "devpilot-jira-bitbucket",
     "displayName": "DevPilot for Jira & Bitbucket",
     "description": "Checks that commit messages reference your Jira tasks, and notifies you about new comments on your Bitbucket pull requests so you can reply without leaving VS Code.",
-    "version": "0.5.8",
+    "version": "0.6.0",
     "publisher": "Sabricakmakci",
     "author": "Sabri Çakmakçı",
     "license": "MIT",
@@ -266,6 +266,23 @@
                 "title": "%command.commentFix.fixAll%",
                 "category": "Bitbucket",
                 "icon": "$(sparkle)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.hideComment",
+                "title": "%command.hideComment%",
+                "category": "Bitbucket",
+                "icon": "$(eye-closed)"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.hidePullRequestComments",
+                "title": "%command.hidePullRequestComments%",
+                "category": "Bitbucket"
+            },
+            {
+                "command": "jiraBitbucketFlow.bitbucket.showHiddenComments",
+                "title": "%command.showHiddenComments%",
+                "category": "Bitbucket",
+                "icon": "$(eye)"
             }
         ],
         "viewsContainers": {
@@ -356,6 +373,11 @@
                     "command": "jiraBitbucketFlow.settings.openAll",
                     "when": "view == jiraBitbucketFlow.settings",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.showHiddenComments",
+                    "when": "view =~ /^jiraBitbucketFlow\\.pullRequests/ && jiraBitbucketFlow.bitbucketConfigured",
+                    "group": "settings"
                 }
             ],
             "view/item/context": [
@@ -519,6 +541,11 @@
             ],
             "comments/commentThread/title": [
                 {
+                    "command": "jiraBitbucketFlow.bitbucket.hideComment",
+                    "when": "commentController == jiraBitbucketFlow.prComments",
+                    "group": "inline@0"
+                },
+                {
                     "command": "jiraBitbucketFlow.bitbucket.openCommentInBrowser",
                     "when": "commentController == jiraBitbucketFlow.prComments",
                     "group": "inline@1"
@@ -532,6 +559,11 @@
                     "command": "jiraBitbucketFlow.review.discardDraft",
                     "when": "commentController == jiraBitbucketFlow.aiReview && commentThread == draft",
                     "group": "inline@2"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.hidePullRequestComments",
+                    "when": "commentController == jiraBitbucketFlow.prComments",
+                    "group": "1_hide@1"
                 }
             ],
             "comments/comment/title": [
@@ -620,6 +652,18 @@
                 },
                 {
                     "command": "jiraBitbucketFlow.commentFix.fixAll",
+                    "when": "jiraBitbucketFlow.bitbucketConfigured"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.hideComment",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.hidePullRequestComments",
+                    "when": "false"
+                },
+                {
+                    "command": "jiraBitbucketFlow.bitbucket.showHiddenComments",
                     "when": "jiraBitbucketFlow.bitbucketConfigured"
                 }
             ]
@@ -754,6 +798,23 @@
                     "default": 30,
                     "minimum": 15,
                     "markdownDescription": "%config.bitbucket.pollInterval%"
+                },
+                "jiraBitbucketFlow.bitbucket.panelComments": {
+                    "type": "string",
+                    "default": "involved",
+                    "enum": [
+                        "involved",
+                        "all"
+                    ],
+                    "enumItemLabels": [
+                        "%config.bitbucket.panelComments.involved%",
+                        "%config.bitbucket.panelComments.all%"
+                    ],
+                    "enumDescriptions": [
+                        "%config.bitbucket.panelComments.involved.detail%",
+                        "%config.bitbucket.panelComments.all.detail%"
+                    ],
+                    "markdownDescription": "%config.bitbucket.panelComments%"
                 },
                 "jiraBitbucketFlow.review.model": {
                     "type": "string",

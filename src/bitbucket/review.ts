@@ -42,6 +42,14 @@ export class DraftComment implements vscode.Comment {
     }
 }
 
+interface Outcome {
+    session: Session;
+    findings: Finding[];
+    parts: number;
+    failedParts: number;
+    dropped: number;
+}
+
 interface Draft {
     pr: PullRequest;
     location: Omit<InlineComment, 'text'>;
@@ -52,6 +60,11 @@ interface Draft {
 export interface ReviewResult {
     drafts: number;
     files: number;
+    /** Parts the diff was split into, and the ones whose answer could not be read even after a retry. */
+    parts: number;
+    failedParts: number;
+    /** Findings the model put on a line that is not part of the diff. */
+    dropped: number;
 }
 
 function bodyText(body: string | vscode.MarkdownString): string {
@@ -83,9 +96,52 @@ export function languageName(code: string = vscode.env.language): string {
     }
 }
 
-function reviewLanguageName(): string {
+/** The language the AI writes in: the `review.language` setting, or the VS Code language when it is `auto`. */
+export function reviewLanguageName(): string {
+    return languageName(reviewLanguageCode());
+}
+
+/** True when the user picked a language instead of leaving the setting on `auto`. */
+export function reviewLanguageIsExplicit(): boolean {
     const language = vscode.workspace.getConfiguration('jiraBitbucketFlow.review').get<string>('language', 'auto');
-    return languageName(language && language !== 'auto' ? language : vscode.env.language);
+    return !!language && language !== 'auto';
+}
+
+export function reviewLanguageCode(): string {
+    const language = vscode.workspace.getConfiguration('jiraBitbucketFlow.review').get<string>('language', 'auto');
+    return language && language !== 'auto' ? language : vscode.env.language;
+}
+
+/** Lets the user pick one of the available language models and saves it in `review.model`. */
+export async function pickReviewModel(): Promise<vscode.LanguageModelChat | undefined> {
+    const models = await vscode.lm.selectChatModels();
+    if (models.length === 0) {
+        throw new Error(l10n.t('No AI model is available. Install GitHub Copilot Chat and sign in.'));
+    }
+    const settings = vscode.workspace.getConfiguration('jiraBitbucketFlow.review');
+    const current = settings.get<string>('model', '');
+    const pick = await vscode.window.showQuickPick(
+        models.map(model => ({
+            label: model.name,
+            description: [`${model.vendor} · ${model.family}`, model.id === current ? l10n.t('Current') : undefined].filter(Boolean).join(' · '),
+            model,
+        })),
+        { title: l10n.t('Select the AI Model for Reviews'), placeHolder: l10n.t('The model is used for AI reviews and readiness rules.') },
+    );
+    if (pick) {
+        await settings.update('model', pick.model.id, vscode.ConfigurationTarget.Global);
+    }
+    return pick?.model;
+}
+
+/** Name of the configured model, for the settings view. */
+export async function reviewModelLabel(): Promise<string> {
+    const id = vscode.workspace.getConfiguration('jiraBitbucketFlow.review').get<string>('model', '');
+    if (!id) {
+        return l10n.t('Ask every time');
+    }
+    const [model] = await vscode.lm.selectChatModels({ id });
+    return model ? model.name : l10n.t('{0} (not available)', id);
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, callback: (item: T) => Promise<R>): Promise<R[]> {
@@ -213,19 +269,8 @@ export class PullRequestReviewer implements vscode.TextDocumentContentProvider, 
         return [...new Map([...this.drafts.values()].map(draft => [draft.pr.key, draft.pr])).values()];
     }
 
-    async selectModel(): Promise<vscode.LanguageModelChat | undefined> {
-        const models = await vscode.lm.selectChatModels();
-        if (models.length === 0) {
-            throw new Error(l10n.t('No AI model is available. Install GitHub Copilot Chat and sign in.'));
-        }
-        const pick = await vscode.window.showQuickPick(
-            models.map(model => ({ label: model.name, description: `${model.vendor} · ${model.family}`, model })),
-            { title: l10n.t('Select the AI Model for Reviews') },
-        );
-        if (pick) {
-            await vscode.workspace.getConfiguration('jiraBitbucketFlow.review').update('model', pick.model.id, vscode.ConfigurationTarget.Global);
-        }
-        return pick?.model;
+    selectModel(): Promise<vscode.LanguageModelChat | undefined> {
+        return pickReviewModel();
     }
 
     /** Returns undefined when the review was cancelled. `extra` holds the reviewer's own instructions for this review. */
@@ -276,7 +321,13 @@ export class PullRequestReviewer implements vscode.TextDocumentContentProvider, 
         if (findings.length > 0) {
             await this.openDiff(session, findings[0].path);
         }
-        return { drafts: findings.length, files: new Set(findings.map(finding => finding.path)).size };
+        return {
+            drafts: findings.length,
+            files: new Set(findings.map(finding => finding.path)).size,
+            parts: outcome.parts,
+            failedParts: outcome.failedParts,
+            dropped: outcome.dropped,
+        };
     }
 
     private async openDiff(session: Session, filePath: string): Promise<void> {
@@ -354,7 +405,7 @@ export class PullRequestReviewer implements vscode.TextDocumentContentProvider, 
         progress: vscode.Progress<{ message?: string }>,
         token: vscode.CancellationToken,
         extra?: string,
-    ): Promise<{ session: Session; findings: Finding[] } | undefined> {
+    ): Promise<Outcome | undefined> {
         progress.report({ message: l10n.t('Loading changes…') });
         const pr = await api.getPullRequest(listed);
         const exclude = vscode.workspace.getConfiguration('jiraBitbucketFlow.review').get<string[]>('excludeFiles', []).map(globToRegExp);
@@ -381,7 +432,7 @@ export class PullRequestReviewer implements vscode.TextDocumentContentProvider, 
             return undefined;
         }
         if (files.length === 0) {
-            return { session, findings: [] };
+            return { session, findings: [], parts: 0, failedParts: 0, dropped: 0 };
         }
 
         progress.report({ message: l10n.t('Reading project rules…') });
@@ -394,19 +445,35 @@ export class PullRequestReviewer implements vscode.TextDocumentContentProvider, 
         const chunks = buildChunks(files, Math.max(MIN_BUDGET_CHARS / 2, budget - prompt.length));
 
         const findings: Finding[] = [];
+        let failedParts = 0;
+        let dropped = 0;
         for (const [index, chunk] of chunks.entries()) {
-            progress.report({ message: chunks.length > 1 ? l10n.t('Reviewing part {0} of {1}…', index + 1, chunks.length) : l10n.t('Reviewing…') });
-            const answer = await this.ask(model, pr, prompt, chunk, token);
+            const part = (again: boolean) => chunks.length > 1
+                ? (again ? l10n.t('Reading part {0} of {1} again…', index + 1, chunks.length) : l10n.t('Reviewing part {0} of {1}…', index + 1, chunks.length))
+                : (again ? l10n.t('Reading the answer again…') : l10n.t('Reviewing…'));
+            progress.report({ message: part(false) });
+            // The model sometimes answers with text instead of JSON, or its answer is cut off. One retry usually helps.
+            let answer = await this.ask(model, pr, prompt, chunk, token);
+            if (!answer && !token.isCancellationRequested) {
+                progress.report({ message: part(true) });
+                answer = await this.ask(model, pr, prompt, chunk, token);
+            }
+            if (!answer) {
+                failedParts++;
+                this.log.warn(`AI review could not read the answer for part ${index + 1} of ${chunks.length} of ${pr.key}.`);
+                continue;
+            }
             for (const raw of answer) {
                 const finding = toFinding(raw, session.files);
                 if (finding) {
                     findings.push(finding);
                 } else {
+                    dropped++;
                     this.log.info(`AI review comment dropped (not on a changed line): ${JSON.stringify(raw).slice(0, 300)}`);
                 }
             }
         }
-        return token.isCancellationRequested ? undefined : { session, findings };
+        return token.isCancellationRequested ? undefined : { session, findings, parts: chunks.length, failedParts, dropped };
     }
 
     private async ask(
@@ -415,7 +482,7 @@ export class PullRequestReviewer implements vscode.TextDocumentContentProvider, 
         prompt: string,
         chunk: string,
         token: vscode.CancellationToken,
-    ): Promise<unknown[]> {
+    ): Promise<unknown[] | undefined> {
         const response = await model.sendRequest(
             [vscode.LanguageModelChatMessage.User(prompt), vscode.LanguageModelChatMessage.User(chunk)],
             { justification: l10n.t('Review pull request #{0}', pr.id) },
@@ -438,7 +505,7 @@ export class PullRequestReviewer implements vscode.TextDocumentContentProvider, 
             }
         }
         this.log.warn(`AI review returned an unexpected answer: ${text.slice(0, 500)}`);
-        return [];
+        return undefined;
     }
 
     private async loadRules(pr: PullRequest): Promise<string> {

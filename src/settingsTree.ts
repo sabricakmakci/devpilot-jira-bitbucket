@@ -4,9 +4,18 @@ import { BitbucketConnection } from './bitbucket/client';
 import { HookState } from './hookInstaller';
 import { errorMessage } from './http';
 import { JiraClient, userId } from './jira';
+import { pickReviewModel, reviewModelLabel } from './bitbucket/review';
 import { readinessRules } from './readiness';
 
-export type SettingKey = 'commitCheck.allowedIssueTypes' | 'commitCheck.onViolation' | 'bitbucket.pollInterval' | 'branchPrefixes' | 'commentFix.excludeAuthors' | 'review.language';
+export type SettingKey =
+    | 'commitCheck.allowedIssueTypes'
+    | 'commitCheck.onViolation'
+    | 'bitbucket.pollInterval'
+    | 'bitbucket.panelComments'
+    | 'branchPrefixes'
+    | 'commentFix.excludeAuthors'
+    | 'review.language'
+    | 'review.model';
 
 /** Keep in sync with the enum of jiraBitbucketFlow.review.language in package.json. */
 const REVIEW_LANGUAGES = ['auto', 'en', 'tr', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'ru', 'ar', 'ja', 'ko', 'zh-CN'];
@@ -44,6 +53,10 @@ function settingLabel(key: SettingKey): string {
             return l10n.t('Authors skipped by AI fix');
         case 'review.language':
             return l10n.t('AI review language');
+        case 'review.model':
+            return l10n.t('AI model');
+        case 'bitbucket.panelComments':
+            return l10n.t('Comments panel');
     }
 }
 
@@ -57,6 +70,10 @@ function reviewLanguageLabel(code: string | undefined): string {
     } catch {
         return code;
     }
+}
+
+function panelCommentsLabel(value: string | undefined): string {
+    return value === 'all' ? l10n.t('All comments') : l10n.t('Only the ones that concern me');
 }
 
 function violationLabel(value: string | undefined): string {
@@ -141,7 +158,9 @@ export class SettingsTreeProvider implements vscode.TreeDataProvider<SettingNode
                 return [
                     settingItem('bitbucket.pollInterval', l10n.t('{0} seconds', settings.get<number>('bitbucket.pollInterval', 30)), 'watch'),
                     settingItem('commentFix.excludeAuthors', settings.get<string[]>('commentFix.excludeAuthors', []).join(', ') || '-', 'sparkle'),
+                    settingItem('bitbucket.panelComments', panelCommentsLabel(settings.get<string>('bitbucket.panelComments')), 'comment-discussion'),
                     settingItem('review.language', reviewLanguageLabel(settings.get<string>('review.language')), 'globe'),
+                    settingItem('review.model', await reviewModelLabel(), 'sparkle'),
                 ];
             case 'general':
                 return [
@@ -277,6 +296,33 @@ export async function editSetting(key: SettingKey): Promise<void> {
                     description: code === current ? l10n.t('Current') : undefined,
                     value: code,
                 })),
+                { title },
+            );
+            if (!pick) {
+                return;
+            }
+            value = pick.value;
+            break;
+        }
+        case 'review.model':
+            // The picker saves the setting itself, so that it also works from the command palette.
+            await pickReviewModel();
+            return;
+        case 'bitbucket.panelComments': {
+            const current = settings.get<string>(key) || 'involved';
+            const pick = await vscode.window.showQuickPick(
+                [
+                    {
+                        label: panelCommentsLabel('involved'),
+                        detail: l10n.t('Comments on your own pull requests, and threads you took part in on the ones you review.'),
+                        value: 'involved',
+                    },
+                    {
+                        label: panelCommentsLabel('all'),
+                        detail: l10n.t('Every comment of every listed pull request.'),
+                        value: 'all',
+                    },
+                ].map(option => ({ ...option, description: option.value === current ? l10n.t('Current') : undefined })),
                 { title },
             );
             if (!pick) {

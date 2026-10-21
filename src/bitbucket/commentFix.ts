@@ -6,7 +6,7 @@ import { API, Repository, findRepository } from '../git';
 import { errorMessage } from '../http';
 import { BitbucketConnection } from './client';
 import { BbUser, BitbucketApi, PrComment, PullRequest, flattenComments, repoPaths } from './model';
-import { languageName } from './review';
+import { reviewLanguageIsExplicit, reviewLanguageName } from './review';
 import { PullRequestWatcher } from './watcher';
 
 const GET_COMMENTS_TOOL = 'jiraBitbucketFlow_getPullRequestComments';
@@ -27,6 +27,11 @@ interface ReplyInput {
     repository?: string;
     commentId: number;
     text: string;
+}
+
+/** Replies follow the configured AI language; on `auto` they follow the reviewer. */
+function replyLanguage(): string {
+    return reviewLanguageIsExplicit() ? `in ${reviewLanguageName()}` : "in the language of the reviewer's comment";
 }
 
 function repoName(pr: PullRequest): string {
@@ -120,9 +125,9 @@ export class CommentFixer implements vscode.Disposable {
             '1. Read the code the comment refers to and the related code, and decide whether the reviewer is right. Line numbers refer to the latest commit of the pull request.',
             '2. If the code needs to change, explain the problem and the change you plan, then wait for my approval before you edit any file. After I approve, make the change and check the changed files for errors. Do not commit or push.',
             '3. If no change is needed, explain why.',
-            `4. Draft a short reply to the reviewer that says what was changed or why nothing needs to change, in the language of the reviewer's comment. Show it to me and post it with #${REPLY_REF} only after I approve it. Do not resolve the comment.`,
+            `4. Draft a short reply to the reviewer that says what was changed or why nothing needs to change, ${replyLanguage()}. Show it to me and post it with #${REPLY_REF} only after I approve it. Do not resolve the comment.`,
             '',
-            `Write your messages to me in ${languageName()}.`,
+            `Write your messages to me in ${reviewLanguageName()}.`,
         ].join('\n');
         try {
             await vscode.commands.executeCommand('workbench.action.chat.open', { query, mode: 'agent' });

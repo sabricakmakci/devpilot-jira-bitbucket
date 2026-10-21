@@ -72,5 +72,13 @@
     "config.readiness.rule.subtask.assigned": "Sub-task birine atanmış olmalı.",
     "config.readiness.rule.when": "Kuralı sadece bu alan doluysa (veya `matches` ile eşleşiyorsa) uygula; örn. sadece bug'lar için.",
     "config.readiness.rule.lowestUnreleased": "`field` içindeki (ör. `Fix Version/s`) her versiyon, projenin released veya archived olmayan en düşük versiyonu olmalıdır. Farklı formattaki versiyonlar (ör. `2.2.0` ve `1.2.0-beta`) ayrı karşılaştırılır.",
-    "config.readiness.rule.severity": "`error` (varsayılan) task'ı kırmızı, `warning` sarı gösterir."
+    "config.readiness.rule.severity": "`error` (varsayılan) task'ı kırmızı, `warning` sarı gösterir.",
+    "command.hideComment": "Bu Yorumu Gizle",
+    "command.hidePullRequestComments": "Bu Pull Request'in Tüm Yorumlarını Gizle",
+    "command.showHiddenComments": "Gizlenen Yorumları Tekrar Göster",
+    "config.bitbucket.panelComments": "**Yorumlar** panelinde hangi pull request yorumlarının görüneceği. Gizlenen yorumlar (**Bu Yorumu Gizle**), thread'e yeni bir yorum yazıldığında geri gelir.",
+    "config.bitbucket.panelComments.involved": "Sadece beni ilgilendirenler",
+    "config.bitbucket.panelComments.all": "Tüm yorumlar",
+    "config.bitbucket.panelComments.involved.detail": "Kendi pull request'lerinize gelen yorumlar ve review ettiğiniz pull request'lerde dahil olduğunuz thread'ler.",
+    "config.bitbucket.panelComments.all.detail": "Listelenen her pull request'in tüm yorumları."
 }
